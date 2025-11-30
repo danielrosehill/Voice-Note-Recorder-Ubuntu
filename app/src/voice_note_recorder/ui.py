@@ -300,22 +300,22 @@ class MainWindow(QMainWindow):
         like Google Gemini and OpenAI Whisper.</p>
 
         <h4 style="color: #2196F3;">Quality Presets</h4>
-        <p>All presets output mono WAV files optimized for speech-to-text.
+        <p>All presets output mono MP3 files optimized for speech-to-text.
         Choose based on your recording length needs:</p>
 
         <table style="margin-left: 10px;">
         <tr>
             <td style="color: #4CAF50; font-weight: bold; padding: 8px 12px 8px 0;">Standard</td>
             <td style="padding: 8px 0;">
-                <b>16 kHz, 16-bit</b> &mdash; ~11 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
-                <span style="color: #888;">Best clarity. Native format for Gemini/Whisper.
+                <b>16 kHz, 64 kbps MP3</b> &mdash; ~43 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
+                <span style="color: #888;">Best clarity. Native sample rate for Gemini/Whisper.
                 Use for important notes where quality matters.</span>
             </td>
         </tr>
         <tr>
             <td style="color: #FF9800; font-weight: bold; padding: 8px 12px 8px 0;">Extended</td>
             <td style="padding: 8px 0;">
-                <b>8 kHz, 16-bit</b> &mdash; ~22 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
+                <b>16 kHz, 32 kbps MP3</b> &mdash; ~85 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
                 <span style="color: #888;">Good quality for longer recordings.
                 Still very clear for speech. <b>Recommended default.</b></span>
             </td>
@@ -323,7 +323,7 @@ class MainWindow(QMainWindow):
         <tr>
             <td style="color: #f44336; font-weight: bold; padding: 8px 12px 8px 0;">Maximum Duration</td>
             <td style="padding: 8px 0;">
-                <b>8 kHz, 8-bit</b> &mdash; ~44 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
+                <b>8 kHz, 24 kbps MP3</b> &mdash; ~110 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
                 <span style="color: #888;">Telephone quality. Use for very long voice notes
                 like meeting recordings or brainstorming sessions.</span>
             </td>
@@ -603,12 +603,12 @@ class MainWindow(QMainWindow):
 
     def _on_save_custom(self) -> None:
         """Save to custom location."""
-        filename = self.recorder.generate_filename() + ".wav"
+        filename = self.recorder.generate_filename() + ".mp3"
         filepath, _ = QFileDialog.getSaveFileName(
             self,
             "Save Voice Note",
             str(Path(self.settings.default_save_path) / filename),
-            "WAV Files (*.wav)",
+            "MP3 Files (*.mp3)",
         )
         if filepath:
             try:

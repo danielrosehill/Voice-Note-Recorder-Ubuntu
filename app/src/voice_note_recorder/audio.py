@@ -1,6 +1,8 @@
 """Audio recording module using sounddevice."""
 
 import queue
+import subprocess
+import tempfile
 import threading
 from dataclasses import dataclass
 from datetime import datetime
@@ -220,7 +222,7 @@ class AudioRecorder:
 
     def save(self, filepath: Path) -> Path:
         """
-        Save the recording to a WAV file.
+        Save the recording to an MP3 file using ffmpeg.
 
         Args:
             filepath: Path to save the file (without extension)
@@ -238,16 +240,46 @@ class AudioRecorder:
             # Concatenate all frames
             audio_data = np.concatenate(self._recorded_frames, axis=0)
 
-        # Ensure .wav extension
-        filepath = filepath.with_suffix(".wav")
+        # Ensure .mp3 extension
+        filepath = filepath.with_suffix(".mp3")
 
-        # Save with current quality settings
-        sf.write(
-            filepath,
-            audio_data,
-            self._quality.sample_rate,
-            subtype=self._quality.subtype,
-        )
+        # Write to temporary WAV file, then convert to MP3 via ffmpeg
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+
+        try:
+            # Write raw audio to temp WAV (always 16-bit PCM for best quality)
+            sf.write(
+                tmp_path,
+                audio_data,
+                self._quality.sample_rate,
+                subtype="PCM_16",
+            )
+
+            # Convert to MP3 using ffmpeg
+            cmd = [
+                "ffmpeg",
+                "-y",  # Overwrite output
+                "-i", str(tmp_path),
+                "-ac", "1",  # Mono
+                "-ar", str(self._quality.sample_rate),
+                "-b:a", f"{self._quality.mp3_bitrate}k",
+                "-codec:a", "libmp3lame",
+                str(filepath),
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+            )
+
+            if result.returncode != 0:
+                raise RuntimeError(f"ffmpeg encoding failed: {result.stderr}")
+
+        finally:
+            # Clean up temp file
+            tmp_path.unlink(missing_ok=True)
 
         # Return to idle state after saving
         self._recorded_frames = []

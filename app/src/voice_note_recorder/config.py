@@ -8,11 +8,11 @@ from typing import Optional
 
 
 class QualityPreset(Enum):
-    """Audio quality presets optimized for different use cases."""
+    """Audio quality presets optimized for STT workflows (all MP3 output)."""
 
-    STANDARD = "standard"      # Best quality, ~11 min per 20MB
-    EXTENDED = "extended"      # Good quality, ~22 min per 20MB
-    MAXIMUM = "maximum"        # Telephone quality, ~44 min per 20MB
+    STANDARD = "standard"      # Best quality, ~43 min per 20MB (64kbps)
+    EXTENDED = "extended"      # Good quality, ~85 min per 20MB (32kbps)
+    MAXIMUM = "maximum"        # Telephone quality, ~110 min per 20MB (24kbps)
 
 
 @dataclass
@@ -21,51 +21,47 @@ class QualitySettings:
 
     name: str
     sample_rate: int
-    sample_width: int  # Bytes (1=8-bit, 2=16-bit)
-    dtype: str         # numpy dtype
-    subtype: str       # soundfile subtype for WAV
+    mp3_bitrate: int   # kbps for MP3 encoding
     description: str
     max_duration_str: str  # Human-readable max duration
 
+    # Internal recording format (always 16-bit for best quality before MP3 encoding)
+    sample_width: int = 2  # Bytes (always 16-bit for recording)
+    dtype: str = "int16"   # numpy dtype
+
     @property
-    def bytes_per_second(self) -> int:
-        """Calculate bytes per second for this preset."""
-        return self.sample_rate * self.sample_width  # Mono
+    def bytes_per_second_mp3(self) -> int:
+        """Calculate bytes per second for MP3 output."""
+        return (self.mp3_bitrate * 1000) // 8  # kbps to bytes/sec
 
     @property
     def max_duration_seconds(self) -> int:
         """Calculate max duration in seconds for 20MB."""
-        return (GEMINI_MAX_FILE_SIZE_MB * 1024 * 1024) // self.bytes_per_second
+        return (GEMINI_MAX_FILE_SIZE_MB * 1024 * 1024) // self.bytes_per_second_mp3
 
 
-# Quality preset definitions
+# Quality preset definitions (all MP3 output)
 QUALITY_PRESETS: dict[QualityPreset, QualitySettings] = {
     QualityPreset.STANDARD: QualitySettings(
         name="Standard",
-        sample_rate=16000,   # 16kHz
-        sample_width=2,      # 16-bit
-        dtype="int16",
-        subtype="PCM_16",
+        sample_rate=16000,   # 16kHz - native for STT models
+        mp3_bitrate=64,      # 64 kbps - excellent for voice
         description="Best clarity for voice. Native format for Gemini/Whisper.",
-        max_duration_str="~11 minutes",
+        max_duration_str="~43 minutes",
     ),
     QualityPreset.EXTENDED: QualitySettings(
         name="Extended",
-        sample_rate=8000,    # 8kHz
-        sample_width=2,      # 16-bit
-        dtype="int16",
-        subtype="PCM_16",
+        sample_rate=16000,   # 16kHz - keep good sample rate
+        mp3_bitrate=32,      # 32 kbps - still exceeds Gemini's 16kbps internal
         description="Good quality for longer recordings. Still very clear.",
-        max_duration_str="~22 minutes",
+        max_duration_str="~85 minutes",
     ),
     QualityPreset.MAXIMUM: QualitySettings(
         name="Maximum Duration",
-        sample_rate=8000,    # 8kHz
-        sample_width=1,      # 8-bit (unsigned)
-        dtype="uint8",
-        subtype="PCM_U8",
+        sample_rate=8000,    # 8kHz - telephone quality
+        mp3_bitrate=24,      # 24 kbps - minimum reasonable for speech
         description="Telephone quality. Use for very long voice notes.",
-        max_duration_str="~44 minutes",
+        max_duration_str="~110 minutes",
     ),
 }
 
