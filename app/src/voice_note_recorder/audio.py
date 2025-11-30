@@ -12,7 +12,7 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
-from .config import SAMPLE_RATE, CHANNELS, DTYPE
+from .config import CHANNELS, QualitySettings, get_quality_settings
 
 
 class RecordingState(Enum):
@@ -37,15 +37,20 @@ class AudioRecorder:
     """
     Audio recorder optimized for voice notes.
 
-    Records 16-bit PCM at 16kHz mono - optimal for STT models.
+    Records mono audio with configurable quality settings for STT models.
     """
 
-    def __init__(self, level_callback: Optional[Callable[[float], None]] = None):
+    def __init__(
+        self,
+        level_callback: Optional[Callable[[float], None]] = None,
+        quality_settings: Optional[QualitySettings] = None,
+    ):
         """
         Initialize the recorder.
 
         Args:
             level_callback: Optional callback for audio level updates (dB value)
+            quality_settings: Audio quality settings (defaults to default preset)
         """
         self._state = RecordingState.IDLE
         self._audio_queue: queue.Queue = queue.Queue()
@@ -55,11 +60,27 @@ class AudioRecorder:
         self._level_callback = level_callback
         self._device_index: Optional[int] = None
         self._lock = threading.Lock()
+        self._quality = quality_settings or get_quality_settings()
+
+    def set_quality(self, quality_settings: QualitySettings) -> None:
+        """
+        Set the quality settings for recording.
+
+        Can only be changed when not recording.
+        """
+        if self._state != RecordingState.IDLE:
+            raise RuntimeError("Cannot change quality while recording")
+        self._quality = quality_settings
 
     @property
     def state(self) -> RecordingState:
         """Current recording state."""
         return self._state
+
+    @property
+    def quality(self) -> QualitySettings:
+        """Current quality settings."""
+        return self._quality
 
     @staticmethod
     def list_devices() -> list[AudioDevice]:
@@ -97,9 +118,18 @@ class AudioRecorder:
         # Always calculate level for meter (even when paused)
         if self._level_callback:
             # Calculate RMS and convert to dB
-            rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+            # Normalize based on bit depth
+            if self._quality.sample_width == 1:
+                # 8-bit unsigned: 0-255, center at 128
+                rms = np.sqrt(np.mean((indata.astype(np.float32) - 128) ** 2))
+                max_val = 128
+            else:
+                # 16-bit signed: -32768 to 32767
+                rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+                max_val = 32768
+
             if rms > 0:
-                db = 20 * np.log10(rms / 32768)  # Normalize to 16-bit range
+                db = 20 * np.log10(rms / max_val)
             else:
                 db = -100
             self._level_callback(db)
@@ -134,14 +164,14 @@ class AudioRecorder:
             except queue.Empty:
                 break
 
-        # Start audio stream
+        # Start audio stream with current quality settings
         self._stream = sd.InputStream(
-            samplerate=SAMPLE_RATE,
+            samplerate=self._quality.sample_rate,
             channels=CHANNELS,
-            dtype=DTYPE,
+            dtype=self._quality.dtype,
             device=self._device_index,
             callback=self._audio_callback,
-            blocksize=int(SAMPLE_RATE * 0.1),  # 100ms blocks
+            blocksize=int(self._quality.sample_rate * 0.1),  # 100ms blocks
         )
         self._stream.start()
 
@@ -186,7 +216,7 @@ class AudioRecorder:
             if not self._recorded_frames:
                 return 0.0
             total_frames = sum(len(f) for f in self._recorded_frames)
-        return total_frames / SAMPLE_RATE
+        return total_frames / self._quality.sample_rate
 
     def save(self, filepath: Path) -> Path:
         """
@@ -211,12 +241,12 @@ class AudioRecorder:
         # Ensure .wav extension
         filepath = filepath.with_suffix(".wav")
 
-        # Save as 16-bit PCM WAV
+        # Save with current quality settings
         sf.write(
             filepath,
             audio_data,
-            SAMPLE_RATE,
-            subtype="PCM_16",
+            self._quality.sample_rate,
+            subtype=self._quality.subtype,
         )
 
         # Return to idle state after saving

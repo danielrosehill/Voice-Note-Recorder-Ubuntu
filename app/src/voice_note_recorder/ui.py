@@ -17,10 +17,18 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFrame,
     QSizePolicy,
+    QTabWidget,
+    QTextBrowser,
 )
 
 from .audio import AudioRecorder, RecordingState
-from .config import Settings, METER_UPDATE_INTERVAL_MS
+from .config import (
+    Settings,
+    METER_UPDATE_INTERVAL_MS,
+    GEMINI_MAX_FILE_SIZE_MB,
+    QualityPreset,
+    QUALITY_PRESETS,
+)
 from .widgets import VolumeMeter
 
 
@@ -40,7 +48,8 @@ class MainWindow(QMainWindow):
         self._level_signal.level_changed.connect(self._on_level_update)
 
         self.recorder = AudioRecorder(
-            level_callback=lambda db: self._level_signal.level_changed.emit(db)
+            level_callback=lambda db: self._level_signal.level_changed.emit(db),
+            quality_settings=self.settings.get_quality_settings(),
         )
 
         self._setup_ui()
@@ -52,13 +61,32 @@ class MainWindow(QMainWindow):
     def _setup_ui(self) -> None:
         """Set up the user interface."""
         self.setWindowTitle("Voice Note Recorder")
-        self.setMinimumSize(400, 280)
-        self.setMaximumSize(500, 350)
+        self.setMinimumSize(420, 420)
+        self.setMaximumSize(520, 520)
 
-        # Central widget
+        # Central widget with tab container
         central = QWidget()
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
+        main_layout = QVBoxLayout(central)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Tab widget
+        self.tabs = QTabWidget()
+        main_layout.addWidget(self.tabs)
+
+        # Create tabs
+        self._setup_record_tab()
+        self._setup_settings_tab()
+        self._setup_about_tab()
+
+        # Apply dark theme
+        self._apply_theme()
+
+    def _setup_record_tab(self) -> None:
+        """Set up the main recording tab."""
+        record_widget = QWidget()
+        layout = QVBoxLayout(record_widget)
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
 
@@ -66,7 +94,9 @@ class MainWindow(QMainWindow):
         self.volume_meter = VolumeMeter()
         layout.addWidget(self.volume_meter)
 
-        # Duration display
+        # Duration and file size display
+        time_info_layout = QHBoxLayout()
+
         self.duration_label = QLabel("00:00")
         self.duration_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.duration_label.setStyleSheet("""
@@ -77,7 +107,28 @@ class MainWindow(QMainWindow):
                 color: #e0e0e0;
             }
         """)
-        layout.addWidget(self.duration_label)
+        time_info_layout.addWidget(self.duration_label)
+
+        # File size estimate
+        self.size_label = QLabel("0.0 MB")
+        self.size_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.size_label.setStyleSheet("""
+            QLabel {
+                font-size: 14px;
+                font-family: monospace;
+                color: #888;
+            }
+        """)
+        time_info_layout.addWidget(self.size_label)
+
+        layout.addLayout(time_info_layout)
+
+        # Max duration indicator (dynamic based on quality)
+        self.max_duration_label = QLabel("")
+        self.max_duration_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.max_duration_label.setStyleSheet("color: #666; font-size: 11px;")
+        layout.addWidget(self.max_duration_label)
+        self._update_max_duration_label()
 
         # Status label
         self.status_label = QLabel("Ready to record")
@@ -141,17 +192,55 @@ class MainWindow(QMainWindow):
         self.save_frame.hide()
         layout.addWidget(self.save_frame)
 
-        # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("background-color: #444;")
-        layout.addWidget(separator)
+        layout.addStretch()
+        self.tabs.addTab(record_widget, "Record")
 
-        # Settings section
-        settings_layout = QVBoxLayout()
-        settings_layout.setSpacing(8)
+    def _setup_settings_tab(self) -> None:
+        """Set up the settings tab."""
+        settings_widget = QWidget()
+        layout = QVBoxLayout(settings_widget)
+        layout.setSpacing(16)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Quality preset selection
+        quality_group_label = QLabel("Recording Quality")
+        quality_group_label.setStyleSheet("color: #e0e0e0; font-weight: bold; font-size: 13px;")
+        layout.addWidget(quality_group_label)
+
+        quality_layout = QHBoxLayout()
+        quality_label = QLabel("Preset:")
+        quality_label.setStyleSheet("color: #aaa;")
+        quality_layout.addWidget(quality_label)
+
+        self.quality_combo = QComboBox()
+        self.quality_combo.setMinimumWidth(200)
+        for preset in QualityPreset:
+            settings = QUALITY_PRESETS[preset]
+            self.quality_combo.addItem(
+                f"{settings.name} ({settings.max_duration_str})",
+                preset.value
+            )
+        self.quality_combo.currentIndexChanged.connect(self._on_quality_changed)
+        quality_layout.addWidget(self.quality_combo, 1)
+        layout.addLayout(quality_layout)
+
+        # Quality description
+        self.quality_desc_label = QLabel("")
+        self.quality_desc_label.setStyleSheet("color: #888; font-size: 11px; margin-left: 60px;")
+        self.quality_desc_label.setWordWrap(True)
+        layout.addWidget(self.quality_desc_label)
+
+        # Separator
+        separator1 = QFrame()
+        separator1.setFrameShape(QFrame.Shape.HLine)
+        separator1.setStyleSheet("background-color: #444;")
+        layout.addWidget(separator1)
 
         # Device selection
+        device_group_label = QLabel("Audio Input")
+        device_group_label.setStyleSheet("color: #e0e0e0; font-weight: bold; font-size: 13px;")
+        layout.addWidget(device_group_label)
+
         device_layout = QHBoxLayout()
         device_label = QLabel("Microphone:")
         device_label.setStyleSheet("color: #aaa;")
@@ -161,15 +250,20 @@ class MainWindow(QMainWindow):
         self.device_combo.setMinimumWidth(200)
         self.device_combo.currentIndexChanged.connect(self._on_device_changed)
         device_layout.addWidget(self.device_combo, 1)
+        layout.addLayout(device_layout)
 
-        settings_layout.addLayout(device_layout)
+        # Separator
+        separator2 = QFrame()
+        separator2.setFrameShape(QFrame.Shape.HLine)
+        separator2.setStyleSheet("background-color: #444;")
+        layout.addWidget(separator2)
 
         # Save path
-        path_layout = QHBoxLayout()
-        path_label = QLabel("Save to:")
-        path_label.setStyleSheet("color: #aaa;")
-        path_layout.addWidget(path_label)
+        path_group_label = QLabel("Default Save Location")
+        path_group_label.setStyleSheet("color: #e0e0e0; font-weight: bold; font-size: 13px;")
+        layout.addWidget(path_group_label)
 
+        path_layout = QHBoxLayout()
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         path_layout.addWidget(self.path_edit, 1)
@@ -177,13 +271,95 @@ class MainWindow(QMainWindow):
         self.browse_btn = QPushButton("Browse...")
         self.browse_btn.clicked.connect(self._on_browse_path)
         path_layout.addWidget(self.browse_btn)
+        layout.addLayout(path_layout)
 
-        settings_layout.addLayout(path_layout)
+        layout.addStretch()
+        self.tabs.addTab(settings_widget, "Settings")
 
-        layout.addLayout(settings_layout)
+    def _setup_about_tab(self) -> None:
+        """Set up the About tab with quality preset explanations."""
+        about_widget = QWidget()
+        layout = QVBoxLayout(about_widget)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
 
-        # Apply dark theme
-        self._apply_theme()
+        about_text = QTextBrowser()
+        about_text.setOpenExternalLinks(True)
+        about_text.setStyleSheet("""
+            QTextBrowser {
+                background-color: #252525;
+                color: #e0e0e0;
+                border: none;
+                font-size: 12px;
+            }
+        """)
+
+        about_html = f"""
+        <h3 style="color: #4CAF50;">Voice Note Recorder</h3>
+        <p>A lightweight voice recorder optimized for AI transcription services
+        like Google Gemini and OpenAI Whisper.</p>
+
+        <h4 style="color: #2196F3;">Quality Presets</h4>
+        <p>All presets output mono WAV files optimized for speech-to-text.
+        Choose based on your recording length needs:</p>
+
+        <table style="margin-left: 10px;">
+        <tr>
+            <td style="color: #4CAF50; font-weight: bold; padding: 8px 12px 8px 0;">Standard</td>
+            <td style="padding: 8px 0;">
+                <b>16 kHz, 16-bit</b> &mdash; ~11 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
+                <span style="color: #888;">Best clarity. Native format for Gemini/Whisper.
+                Use for important notes where quality matters.</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="color: #FF9800; font-weight: bold; padding: 8px 12px 8px 0;">Extended</td>
+            <td style="padding: 8px 0;">
+                <b>8 kHz, 16-bit</b> &mdash; ~22 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
+                <span style="color: #888;">Good quality for longer recordings.
+                Still very clear for speech. <b>Recommended default.</b></span>
+            </td>
+        </tr>
+        <tr>
+            <td style="color: #f44336; font-weight: bold; padding: 8px 12px 8px 0;">Maximum Duration</td>
+            <td style="padding: 8px 0;">
+                <b>8 kHz, 8-bit</b> &mdash; ~44 min per {GEMINI_MAX_FILE_SIZE_MB} MB<br/>
+                <span style="color: #888;">Telephone quality. Use for very long voice notes
+                like meeting recordings or brainstorming sessions.</span>
+            </td>
+        </tr>
+        </table>
+
+        <h4 style="color: #2196F3; margin-top: 16px;">API Limits</h4>
+        <p>Gemini's file upload limit is <b>{GEMINI_MAX_FILE_SIZE_MB} MB</b>.
+        The max duration shown accounts for this limit.
+        For longer recordings, consider splitting into multiple files.</p>
+
+        <p style="color: #666; margin-top: 20px; font-size: 11px;">
+        Built with PyQt6 and sounddevice.
+        </p>
+        """
+
+        about_text.setHtml(about_html)
+        layout.addWidget(about_text)
+
+        self.tabs.addTab(about_widget, "About")
+
+    def _update_max_duration_label(self) -> None:
+        """Update the max duration label based on current quality settings."""
+        quality = self.recorder.quality
+        max_secs = quality.max_duration_seconds
+        max_mins = max_secs // 60
+        max_secs_remainder = max_secs % 60
+        self.max_duration_label.setText(
+            f"Max: {max_mins}:{max_secs_remainder:02d} ({GEMINI_MAX_FILE_SIZE_MB} MB) - {quality.name}"
+        )
+
+    def _update_quality_description(self) -> None:
+        """Update the quality description label."""
+        preset = self.settings.get_quality_preset()
+        settings = QUALITY_PRESETS[preset]
+        self.quality_desc_label.setText(settings.description)
 
     def _setup_shortcuts(self) -> None:
         """Set up keyboard shortcuts."""
@@ -234,6 +410,26 @@ class MainWindow(QMainWindow):
             QWidget {
                 background-color: #1e1e1e;
                 color: #e0e0e0;
+            }
+            QTabWidget::pane {
+                border: 1px solid #444;
+                background-color: #1e1e1e;
+            }
+            QTabBar::tab {
+                background-color: #2d2d2d;
+                color: #aaa;
+                padding: 8px 16px;
+                border: 1px solid #444;
+                border-bottom: none;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+                border-bottom: 1px solid #1e1e1e;
+            }
+            QTabBar::tab:hover:!selected {
+                background-color: #383838;
             }
             QComboBox {
                 background-color: #333;
@@ -303,6 +499,16 @@ class MainWindow(QMainWindow):
                     self.recorder.set_device(dev.index)
                     break
 
+        # Select quality preset
+        self.quality_combo.blockSignals(True)
+        current_preset = self.settings.get_quality_preset()
+        for i, preset in enumerate(QualityPreset):
+            if preset == current_preset:
+                self.quality_combo.setCurrentIndex(i)
+                break
+        self.quality_combo.blockSignals(False)
+        self._update_quality_description()
+
     def _on_level_update(self, db: float) -> None:
         """Handle level updates from the audio thread."""
         self.volume_meter.set_level(db)
@@ -311,11 +517,26 @@ class MainWindow(QMainWindow):
         """Update UI elements periodically."""
         state = self.recorder.state
         duration = self.recorder.get_duration()
+        quality = self.recorder.quality
 
         # Update duration display
         minutes = int(duration // 60)
         seconds = int(duration % 60)
         self.duration_label.setText(f"{minutes:02d}:{seconds:02d}")
+
+        # Update file size estimate (using current quality's bytes per second)
+        file_size_bytes = duration * quality.bytes_per_second
+        file_size_mb = file_size_bytes / (1024 * 1024)
+        self.size_label.setText(f"{file_size_mb:.1f} MB")
+
+        # Warn if approaching Gemini limit (based on current quality's max duration)
+        max_duration = quality.max_duration_seconds
+        if duration > max_duration * 0.9:
+            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #f44336;")
+        elif duration > max_duration * 0.75:
+            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #FF9800;")
+        else:
+            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #888;")
 
         # Update button states
         is_idle = state == RecordingState.IDLE
@@ -328,6 +549,9 @@ class MainWindow(QMainWindow):
         self.pause_btn.setText("Resume" if is_paused else "Pause")
         self.stop_btn.setEnabled(is_recording or is_paused)
         self.clear_btn.setEnabled(is_recording or is_paused or is_stopped)
+
+        # Disable quality changes while recording
+        self.quality_combo.setEnabled(is_idle)
 
         # Show/hide save controls
         self.save_frame.setVisible(is_stopped)
@@ -363,6 +587,8 @@ class MainWindow(QMainWindow):
         self.recorder.clear()
         self.volume_meter.reset()
         self.duration_label.setText("00:00")
+        self.size_label.setText("0.0 MB")
+        self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #888;")
 
     def _on_save_default(self) -> None:
         """Save to default location."""
@@ -398,6 +624,24 @@ class MainWindow(QMainWindow):
             self.recorder.set_device(device.index)
             self.settings.preferred_device = device.name
             self.settings.save()
+
+    def _on_quality_changed(self, index: int) -> None:
+        """Handle quality preset selection change."""
+        presets = list(QualityPreset)
+        if 0 <= index < len(presets):
+            preset = presets[index]
+            quality_settings = QUALITY_PRESETS[preset]
+
+            # Update recorder
+            self.recorder.set_quality(quality_settings)
+
+            # Save preference
+            self.settings.quality_preset = preset.value
+            self.settings.save()
+
+            # Update UI elements
+            self._update_quality_description()
+            self._update_max_duration_label()
 
     def _on_browse_path(self) -> None:
         """Browse for default save path."""

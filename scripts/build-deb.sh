@@ -29,9 +29,13 @@ mkdir -p "$INSTALL_DIR/usr/bin"
 mkdir -p "$INSTALL_DIR/usr/share/applications"
 mkdir -p "$INSTALL_DIR/usr/share/icons/hicolor/scalable/apps"
 
-# Copy application files
+# Copy application files with proper permissions
 cp -r app/src/voice_note_recorder "$INSTALL_DIR/opt/voice-note-recorder/"
 cp app/pyproject.toml "$INSTALL_DIR/opt/voice-note-recorder/"
+
+# Ensure all files are readable
+find "$INSTALL_DIR/opt/voice-note-recorder" -type f -exec chmod 644 {} \;
+find "$INSTALL_DIR/opt/voice-note-recorder" -type d -exec chmod 755 {} \;
 
 # Create launcher script
 cat > "$INSTALL_DIR/usr/bin/voice-note-recorder" << 'EOF'
@@ -46,11 +50,11 @@ main()
 EOF
 chmod +x "$INSTALL_DIR/usr/bin/voice-note-recorder"
 
-# Copy desktop file
-cp packaging/debian/voice-note-recorder.desktop "$INSTALL_DIR/usr/share/applications/"
+# Copy desktop file (ensure readable)
+install -m 644 packaging/debian/voice-note-recorder.desktop "$INSTALL_DIR/usr/share/applications/"
 
-# Copy icon
-cp assets/voice-note-recorder.svg "$INSTALL_DIR/usr/share/icons/hicolor/scalable/apps/"
+# Copy icon (ensure readable)
+install -m 644 assets/voice-note-recorder.svg "$INSTALL_DIR/usr/share/icons/hicolor/scalable/apps/"
 
 # Create control file
 cat > "$INSTALL_DIR/DEBIAN/control" << EOF
