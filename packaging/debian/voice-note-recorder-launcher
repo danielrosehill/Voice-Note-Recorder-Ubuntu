@@ -1,0 +1,10 @@
+#!/bin/bash
+# Voice Note Recorder launcher script
+# Uses system Python with PyQt6 and required packages
+
+exec python3 -c "
+import sys
+sys.path.insert(0, '/opt/voice-note-recorder')
+from voice_note_recorder.main import main
+main()
+"

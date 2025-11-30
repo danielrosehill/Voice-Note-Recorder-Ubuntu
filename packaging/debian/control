@@ -1,0 +1,21 @@
+Source: voice-note-recorder
+Section: sound
+Priority: optional
+Maintainer: Daniel Rosehill <public@danielrosehill.com>
+Build-Depends: debhelper-compat (= 13), python3, python3-pip, python3-venv
+Standards-Version: 4.6.0
+Homepage: https://github.com/danielrosehill/Voice-Note-Recorder-Ubuntu
+
+Package: voice-note-recorder
+Architecture: all
+Depends: python3 (>= 3.10), python3-pyqt6, libportaudio2, ${misc:Depends}
+Description: Lightweight voice note recorder for AI transcription
+ A purpose-built voice note recorder optimized for speech-to-text
+ workflows. Pre-configured with settings tuned for STT models like
+ Gemini and Whisper, including 16kHz mono audio output.
+ .
+ Features:
+  - Simple record/pause/stop interface
+  - Volume meter with target range indicators
+  - One-click save to default location
+  - Persistent microphone and path preferences

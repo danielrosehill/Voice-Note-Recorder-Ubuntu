@@ -1,0 +1,10 @@
+voice-note-recorder (0.1.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Core recording functionality with pause/resume
+  * Volume meter with target range indicators
+  * Settings persistence for microphone and save path
+  * Keyboard shortcuts (Ctrl+S, Ctrl+Shift+S)
+  * Dark theme UI optimized for KDE Plasma
+
+ -- Daniel Rosehill <public@danielrosehill.com>  Sat, 30 Nov 2025 14:00:00 +0200

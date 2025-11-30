@@ -3,7 +3,8 @@
 # Handles venv activation and runs the app
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$SCRIPT_DIR/app"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APP_DIR="$PROJECT_ROOT/app"
 VENV_DIR="$APP_DIR/.venv"
 
 # Check if venv exists, create if not

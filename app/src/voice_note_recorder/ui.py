@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject
-from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtGui import QIcon, QAction, QShortcut, QKeySequence
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
         )
 
         self._setup_ui()
+        self._setup_shortcuts()
         self._setup_timer()
         self._load_devices()
         self._apply_settings()
@@ -125,13 +126,13 @@ class MainWindow(QMainWindow):
         save_layout.setContentsMargins(0, 0, 0, 0)
         save_layout.setSpacing(8)
 
-        self.save_default_btn = QPushButton("Save to Default")
+        self.save_default_btn = QPushButton("Save to Default (Ctrl+S)")
         self.save_default_btn.setMinimumHeight(36)
         self.save_default_btn.clicked.connect(self._on_save_default)
         self.save_default_btn.setStyleSheet(self._button_style("#2196F3", "#1976D2"))
         save_layout.addWidget(self.save_default_btn)
 
-        self.save_custom_btn = QPushButton("Save to Custom...")
+        self.save_custom_btn = QPushButton("Save to Custom... (Ctrl+Shift+S)")
         self.save_custom_btn.setMinimumHeight(36)
         self.save_custom_btn.clicked.connect(self._on_save_custom)
         self.save_custom_btn.setStyleSheet(self._button_style("#607D8B", "#546E7A"))
@@ -183,6 +184,26 @@ class MainWindow(QMainWindow):
 
         # Apply dark theme
         self._apply_theme()
+
+    def _setup_shortcuts(self) -> None:
+        """Set up keyboard shortcuts."""
+        # Save to default (Ctrl+S) - only active when save frame is visible
+        self.save_default_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.save_default_shortcut.activated.connect(self._on_shortcut_save_default)
+
+        # Save to custom (Ctrl+Shift+S)
+        self.save_custom_shortcut = QShortcut(QKeySequence("Ctrl+Shift+S"), self)
+        self.save_custom_shortcut.activated.connect(self._on_shortcut_save_custom)
+
+    def _on_shortcut_save_default(self) -> None:
+        """Handle Ctrl+S shortcut."""
+        if self.save_frame.isVisible():
+            self._on_save_default()
+
+    def _on_shortcut_save_custom(self) -> None:
+        """Handle Ctrl+Shift+S shortcut."""
+        if self.save_frame.isVisible():
+            self._on_save_custom()
 
     def _button_style(self, bg_color: str, hover_color: str) -> str:
         """Generate button stylesheet."""

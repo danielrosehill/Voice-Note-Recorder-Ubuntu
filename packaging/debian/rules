@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Nothing to build
+
+override_dh_auto_install:
+	# Install Python package
+	mkdir -p debian/voice-note-recorder/opt/voice-note-recorder
+	cp -r app/src/voice_note_recorder debian/voice-note-recorder/opt/voice-note-recorder/
+	cp app/pyproject.toml debian/voice-note-recorder/opt/voice-note-recorder/
+
+	# Install launcher script
+	mkdir -p debian/voice-note-recorder/usr/bin
+	cp debian/voice-note-recorder-launcher debian/voice-note-recorder/usr/bin/voice-note-recorder
+	chmod +x debian/voice-note-recorder/usr/bin/voice-note-recorder
+
+	# Install desktop file
+	mkdir -p debian/voice-note-recorder/usr/share/applications
+	cp debian/voice-note-recorder.desktop debian/voice-note-recorder/usr/share/applications/
+
+	# Install icon
+	mkdir -p debian/voice-note-recorder/usr/share/icons/hicolor/scalable/apps
+	cp assets/voice-note-recorder.svg debian/voice-note-recorder/usr/share/icons/hicolor/scalable/apps/ || true

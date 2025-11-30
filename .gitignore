@@ -1,0 +1,20 @@
+# Build outputs
+build/
+dist/
+
+# Virtual environments (use app/.venv)
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
