@@ -94,9 +94,7 @@ class MainWindow(QMainWindow):
         self.volume_meter = VolumeMeter()
         layout.addWidget(self.volume_meter)
 
-        # Duration and file size display
-        time_info_layout = QHBoxLayout()
-
+        # Duration display (centered)
         self.duration_label = QLabel("00:00")
         self.duration_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.duration_label.setStyleSheet("""
@@ -104,36 +102,34 @@ class MainWindow(QMainWindow):
                 font-size: 32px;
                 font-weight: bold;
                 font-family: monospace;
-                color: #e0e0e0;
+                color: #333;
             }
         """)
-        time_info_layout.addWidget(self.duration_label)
+        layout.addWidget(self.duration_label)
 
-        # File size estimate
+        # File size estimate (centered below duration)
         self.size_label = QLabel("0.0 MB")
         self.size_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.size_label.setStyleSheet("""
             QLabel {
                 font-size: 14px;
                 font-family: monospace;
-                color: #888;
+                color: #666;
             }
         """)
-        time_info_layout.addWidget(self.size_label)
-
-        layout.addLayout(time_info_layout)
+        layout.addWidget(self.size_label)
 
         # Max duration indicator (dynamic based on quality)
         self.max_duration_label = QLabel("")
         self.max_duration_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.max_duration_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.max_duration_label.setStyleSheet("color: #888; font-size: 11px;")
         layout.addWidget(self.max_duration_label)
         self._update_max_duration_label()
 
         # Status label
         self.status_label = QLabel("Ready to record")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("color: #888; font-size: 12px;")
+        self.status_label.setStyleSheet("color: #666; font-size: 12px;")
         layout.addWidget(self.status_label)
 
         # Main controls
@@ -204,12 +200,12 @@ class MainWindow(QMainWindow):
 
         # Quality preset selection
         quality_group_label = QLabel("Recording Quality")
-        quality_group_label.setStyleSheet("color: #e0e0e0; font-weight: bold; font-size: 13px;")
+        quality_group_label.setStyleSheet("color: #333; font-weight: bold; font-size: 13px;")
         layout.addWidget(quality_group_label)
 
         quality_layout = QHBoxLayout()
         quality_label = QLabel("Preset:")
-        quality_label.setStyleSheet("color: #aaa;")
+        quality_label.setStyleSheet("color: #666;")
         quality_layout.addWidget(quality_label)
 
         self.quality_combo = QComboBox()
@@ -233,17 +229,17 @@ class MainWindow(QMainWindow):
         # Separator
         separator1 = QFrame()
         separator1.setFrameShape(QFrame.Shape.HLine)
-        separator1.setStyleSheet("background-color: #444;")
+        separator1.setStyleSheet("background-color: #ddd;")
         layout.addWidget(separator1)
 
         # Device selection
         device_group_label = QLabel("Audio Input")
-        device_group_label.setStyleSheet("color: #e0e0e0; font-weight: bold; font-size: 13px;")
+        device_group_label.setStyleSheet("color: #333; font-weight: bold; font-size: 13px;")
         layout.addWidget(device_group_label)
 
         device_layout = QHBoxLayout()
         device_label = QLabel("Microphone:")
-        device_label.setStyleSheet("color: #aaa;")
+        device_label.setStyleSheet("color: #666;")
         device_layout.addWidget(device_label)
 
         self.device_combo = QComboBox()
@@ -255,12 +251,12 @@ class MainWindow(QMainWindow):
         # Separator
         separator2 = QFrame()
         separator2.setFrameShape(QFrame.Shape.HLine)
-        separator2.setStyleSheet("background-color: #444;")
+        separator2.setStyleSheet("background-color: #ddd;")
         layout.addWidget(separator2)
 
         # Save path
         path_group_label = QLabel("Default Save Location")
-        path_group_label.setStyleSheet("color: #e0e0e0; font-weight: bold; font-size: 13px;")
+        path_group_label.setStyleSheet("color: #333; font-weight: bold; font-size: 13px;")
         layout.addWidget(path_group_label)
 
         path_layout = QHBoxLayout()
@@ -287,8 +283,8 @@ class MainWindow(QMainWindow):
         about_text.setOpenExternalLinks(True)
         about_text.setStyleSheet("""
             QTextBrowser {
-                background-color: #252525;
-                color: #e0e0e0;
+                background-color: #fff;
+                color: #333;
                 border: none;
                 font-size: 12px;
             }
@@ -402,66 +398,66 @@ class MainWindow(QMainWindow):
         """
 
     def _apply_theme(self) -> None:
-        """Apply dark theme to the window."""
+        """Apply light modern minimalist theme to the window."""
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #1e1e1e;
+                background-color: #f5f5f5;
             }
             QWidget {
-                background-color: #1e1e1e;
-                color: #e0e0e0;
+                background-color: #f5f5f5;
+                color: #333;
             }
             QTabWidget::pane {
-                border: 1px solid #444;
-                background-color: #1e1e1e;
+                border: 1px solid #ddd;
+                background-color: #fff;
             }
             QTabBar::tab {
-                background-color: #2d2d2d;
-                color: #aaa;
+                background-color: #e8e8e8;
+                color: #666;
                 padding: 8px 16px;
-                border: 1px solid #444;
+                border: 1px solid #ddd;
                 border-bottom: none;
                 margin-right: 2px;
             }
             QTabBar::tab:selected {
-                background-color: #1e1e1e;
-                color: #e0e0e0;
-                border-bottom: 1px solid #1e1e1e;
+                background-color: #fff;
+                color: #333;
+                border-bottom: 1px solid #fff;
             }
             QTabBar::tab:hover:!selected {
-                background-color: #383838;
+                background-color: #f0f0f0;
             }
             QComboBox {
-                background-color: #333;
-                border: 1px solid #444;
+                background-color: #fff;
+                border: 1px solid #ccc;
                 border-radius: 4px;
                 padding: 6px;
-                color: #e0e0e0;
+                color: #333;
             }
             QComboBox::drop-down {
                 border: none;
             }
             QComboBox QAbstractItemView {
-                background-color: #333;
-                color: #e0e0e0;
-                selection-background-color: #555;
+                background-color: #fff;
+                color: #333;
+                selection-background-color: #e3f2fd;
             }
             QLineEdit {
-                background-color: #333;
-                border: 1px solid #444;
+                background-color: #fff;
+                border: 1px solid #ccc;
                 border-radius: 4px;
                 padding: 6px;
-                color: #e0e0e0;
+                color: #333;
             }
             QPushButton {
-                background-color: #444;
+                background-color: #e0e0e0;
                 border: none;
                 border-radius: 4px;
                 padding: 6px 12px;
-                color: #e0e0e0;
+                color: #333;
             }
             QPushButton:hover {
-                background-color: #555;
+                background-color: #d0d0d0;
             }
         """)
 
@@ -525,18 +521,18 @@ class MainWindow(QMainWindow):
         self.duration_label.setText(f"{minutes:02d}:{seconds:02d}")
 
         # Update file size estimate (using current quality's bytes per second)
-        file_size_bytes = duration * quality.bytes_per_second
+        file_size_bytes = duration * quality.bytes_per_second_mp3
         file_size_mb = file_size_bytes / (1024 * 1024)
         self.size_label.setText(f"{file_size_mb:.1f} MB")
 
         # Warn if approaching Gemini limit (based on current quality's max duration)
         max_duration = quality.max_duration_seconds
         if duration > max_duration * 0.9:
-            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #f44336;")
+            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #d32f2f;")
         elif duration > max_duration * 0.75:
-            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #FF9800;")
+            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #f57c00;")
         else:
-            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #888;")
+            self.size_label.setStyleSheet("font-size: 14px; font-family: monospace; color: #666;")
 
         # Update button states
         is_idle = state == RecordingState.IDLE

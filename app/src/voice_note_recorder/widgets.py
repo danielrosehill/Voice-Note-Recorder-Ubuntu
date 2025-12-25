@@ -37,13 +37,13 @@ class VolumeMeter(QWidget):
         self._current_level_db: float = METER_MIN_DB
         self._display_level_db: float = METER_MIN_DB
 
-        # Colors
-        self._bg_color = QColor(30, 30, 30)
-        self._low_color = QColor(60, 60, 60)
+        # Colors (light theme)
+        self._bg_color = QColor(230, 230, 230)
+        self._low_color = QColor(180, 180, 180)
         self._good_color = QColor(76, 175, 80)  # Green
         self._warn_color = QColor(255, 193, 7)  # Amber
         self._peak_color = QColor(244, 67, 54)  # Red
-        self._notch_color = QColor(255, 255, 255, 180)
+        self._notch_color = QColor(80, 80, 80, 200)
 
     def set_level(self, db: float) -> None:
         """Update the current level (called from audio callback)."""
@@ -102,7 +102,7 @@ class VolumeMeter(QWidget):
             painter.drawRect(margin, margin, level_x - margin, bar_height)
 
         # Draw unfilled portion
-        painter.setBrush(QColor(50, 50, 50))
+        painter.setBrush(QColor(200, 200, 200))
         if level_x < width - margin:
             painter.drawRect(level_x, margin, width - level_x - margin, bar_height)
 
@@ -117,7 +117,7 @@ class VolumeMeter(QWidget):
         painter.drawLine(target_max_x, 0, target_max_x, height)
 
         # Draw dB labels
-        painter.setPen(QColor(180, 180, 180))
+        painter.setPen(QColor(100, 100, 100))
         font = painter.font()
         font.setPointSize(8)
         painter.setFont(font)
