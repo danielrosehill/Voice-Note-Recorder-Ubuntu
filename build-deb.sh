@@ -34,6 +34,10 @@ echo "Copying source files..."
 cp "$SOURCE_DIR/voice_note_recorder/"*.py "$PACKAGE_DIR/opt/voice-note-recorder/voice_note_recorder/"
 cp "$SCRIPT_DIR/app/pyproject.toml" "$PACKAGE_DIR/opt/voice-note-recorder/"
 
+# Ensure files are world-readable
+chmod 644 "$PACKAGE_DIR/opt/voice-note-recorder/voice_note_recorder/"*.py
+chmod 644 "$PACKAGE_DIR/opt/voice-note-recorder/pyproject.toml"
+
 # Create launcher script
 cat > "$PACKAGE_DIR/usr/bin/voice-note-recorder" << 'EOF'
 #!/bin/bash
